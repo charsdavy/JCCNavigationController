@@ -1,5 +1,40 @@
 # JCCNavigationController
-一种导航栏一体化转场动画效果
+
+A navigation bar integrated transition animation effect.
+
+## Installation
+
+### CocoaPods
+
+[CocoaPods](https://cocoapods.org/) is a dependency manager for Cocoa projects. You can install it with the following command:
+
+```bash
+$ gem install cocoapods
+```
+
+To integrate JCCNavigationController into your Xcode project using CocoaPods, specify it to a target in your Podfile:
+
+```bash
+source 'https://github.com/CocoaPods/Specs.git'
+platform :ios, '8.0'
+use_frameworks!
+
+target 'MyApp' do
+  # your other pod
+  # ...
+  pod 'JCCNavigationController', '~> 1.0'
+end
+```
+
+Then, run the following command:
+
+```bash
+$ pod install
+```
+
+You should open the `{Project}.xcworkspace` instead of the `{Project}.xcodeproj` after you installed anything from CocoaPods.
+
+For more information about how to use CocoaPods, I suggest [this tutorial](https://www.raywenderlich.com/156971/cocoapods-tutorial-swift-getting-started).
 
 # Usage
 
