@@ -12,7 +12,7 @@ A navigation bar integrated transition animation effect.
 $ gem install cocoapods
 ```
 
-To integrate JCCNavigationController into your Xcode project using CocoaPods, specify it to a target in your Podfile:
+To integrate JCCNavigationController into your Xcode project using CocoaPods, specify it to a target in your `Podfile`:
 
 ```bash
 source 'https://github.com/CocoaPods/Specs.git'
