@@ -1,5 +1,16 @@
 # JCCNavigationController
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat
+            )](http://mit-license.org)
+[![Platform](http://img.shields.io/badge/platform-ios-lightgrey.svg?style=flat
+             )](https://developer.apple.com/resources/)
+[![Language](http://img.shields.io/badge/language-swift-orange.svg?style=flat
+             )](https://developer.apple.com/swift)
+             
+[![Issues](https://img.shields.io/github/issues/charsdavy/JCCNavigationController.svg?style=flat
+           )](https://github.com/charsdavy/JCCNavigationController/issues)
+[![Cocoapod](http://img.shields.io/cocoapods/v/SwiftyStoreKit.svg?style=flat)](http://cocoadocs.org/docsets/SwiftyStoreKit/)
+
 A navigation bar integrated transition animation effect.
 
 ## Installation
