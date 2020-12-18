@@ -8,27 +8,39 @@
 
 import UIKit
 
-enum PanDirection : Int {
+enum EdgeDirection: Int {
     case None
     case Left
     case Right
 }
 
+let JCCNavigationEdgeGestureDidChangedNotificationName: String = "JCCNavigationEdgeGestureDidChangedNotification"
+let JCCNavigationEdgeGestureEnableStatusKey: String = "JCCNavigationEdgeGestureEnableStatus"
+
 class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
-    var viewControllers : NSMutableArray = NSMutableArray.init()
-    var gestures : NSMutableArray = NSMutableArray.init()
+    var viewControllers: NSMutableArray = NSMutableArray()
+    var gestures: NSMutableArray = NSMutableArray()
 
-    var blackMask : UIView? = nil
-    var animationing : Bool = false
-    var percentageOffsetFromLeft : CGFloat = 0
-    var panOrigin : CGPoint = CGPoint.init(x: 0, y: 0)
+    var blackMask: UIView?
+    var animationing: Bool = false
+    var percentageOffsetFromLeft: CGFloat = 0
+    var panOrigin: CGPoint = CGPoint(x: 0, y: 0)
 
+    let AnimationDuration: TimeInterval = 0.5 // Push / Pop 动画持续时间
+    let MaxBlackMaskAlpha: CGFloat = 0.8 // 黑色背景透明度
+    let ZoomRatio: CGFloat = 0.95 // 后面视图缩放比
+    let ShadowOpacity: Float = 0.8 // 滑动返回时当前视图的阴影透明度
+    let ShadowRadius: CGFloat = 8.0 // 滑动返回时当前视图的阴影半径
 
-    let AnimationDuration : TimeInterval = 0.5 // Push / Pop 动画持续时间
-    let MaxBlackMaskAlpha : CGFloat = 0.8 // 黑色背景透明度
-    let ZoomRatio : CGFloat = 0.95   // 后面视图缩放比
-    let ShadowOpacity : Float = 0.8 // 滑动返回时当前视图的阴影透明度
-    let ShadowRadius : CGFloat = 8.0  // 滑动返回时当前视图的阴影半径
+    var breakEdgeGesture: Bool = false // 中断左滑手势操作
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        if self.currentViewController != nil {
+            return self.currentViewController.preferredStatusBarStyle
+        } else {
+            return UIStatusBarStyle.default
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -44,26 +56,26 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
     override func loadView() {
         super.loadView()
 
-        let viewRect = self.viewBoundsWithOrientation(orientation: self.interfaceOrientation)
+        let viewRect = viewBoundsWithOrientation(orientation: interfaceOrientation)
 
         let rootViewController = viewControllers.firstObject as! UIViewController
-        rootViewController.willMove(toParentViewController: self)
-        self.addChildViewController(rootViewController)
+        rootViewController.willMove(toParent: self)
+        addChild(rootViewController)
 
         let rootView = rootViewController.view as UIView
-        rootView.autoresizingMask = UIViewAutoresizing(rawValue: UIViewAutoresizing.RawValue(UInt8(UIViewAutoresizing.flexibleHeight.rawValue) | UInt8(UIViewAutoresizing.flexibleWidth.rawValue)))
+        rootView.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
         rootView.frame = viewRect
-        self.view.addSubview(rootView)
-        rootViewController.didMove(toParentViewController: self)
+        view.addSubview(rootView)
+        rootViewController.didMove(toParent: self)
 
-        let blackMask = UIView.init(frame: viewRect)
+        let blackMask = UIView(frame: viewRect)
         blackMask.backgroundColor = UIColor.black
         blackMask.alpha = 0
-        blackMask.autoresizingMask = UIViewAutoresizing(rawValue: UIViewAutoresizing.RawValue(UInt8(UIViewAutoresizing.flexibleHeight.rawValue) | UInt8(UIViewAutoresizing.flexibleWidth.rawValue)))
-        self.view.insertSubview(blackMask, at: 0)
+        blackMask.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
+        view.insertSubview(blackMask, at: 0)
         self.blackMask = blackMask
 
-        self.view.autoresizingMask = UIViewAutoresizing(rawValue: UIViewAutoresizing.RawValue(UInt8(UIViewAutoresizing.flexibleHeight.rawValue) | UInt8(UIViewAutoresizing.flexibleWidth.rawValue)))
+        view.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -72,11 +84,19 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
 
     public init(rootViewController: UIViewController) {
         super.init(nibName: nil, bundle: nil)
-        self.viewControllers.add(rootViewController)
+        viewControllers.add(rootViewController)
+
+        NotificationCenter.default.addObserver(self, selector: #selector(edgeGestureDidChanged(sender:)), name: NSNotification.Name(rawValue: JCCNavigationEdgeGestureDidChangedNotificationName), object: nil)
     }
 
-    func viewBoundsWithOrientation(orientation : UIInterfaceOrientation) -> CGRect {
-        var bounds : CGRect = UIScreen.main.bounds
+    @objc func edgeGestureDidChanged(sender: Notification) {
+        let userInfo: NSDictionary? = sender.userInfo as NSDictionary?
+        let status: Bool = ((userInfo?.object(forKey: JCCNavigationEdgeGestureEnableStatusKey)) != nil)
+        breakEdgeGesture = status
+    }
+
+    func viewBoundsWithOrientation(orientation: UIInterfaceOrientation) -> CGRect {
+        var bounds: CGRect = UIScreen.main.bounds
 
         if UIApplication.shared.isStatusBarHidden {
             return bounds
@@ -92,158 +112,158 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
 
-    var currentViewController : UIViewController {
-        var result : UIViewController? = nil
+    var currentViewController: UIViewController {
+        var result: UIViewController?
 
-        if self.viewControllers.count > 0 {
-            result = self.viewControllers.lastObject as? UIViewController
+        if viewControllers.count > 0 {
+            result = viewControllers.lastObject as? UIViewController
         }
         return result!
     }
 
-    var previousViewController : UIViewController {
-        var result : UIViewController? = nil
+    var previousViewController: UIViewController {
+        var result: UIViewController?
 
-        if self.viewControllers.count > 1 {
-            result = self.viewControllers.object(at: viewControllers.count - 2) as? UIViewController
+        if viewControllers.count > 1 {
+            result = viewControllers.object(at: viewControllers.count - 2) as? UIViewController
         }
         return result!
     }
 
-    func addPanGestureToView(view: UIView) -> Void {
-        let panGesture = UIPanGestureRecognizer.init(target: self, action: #selector(self.gestureRecognizerDidPan(panGesture:)))
-        panGesture.delegate = self
-        view.addGestureRecognizer(panGesture)
+    func addEdgeGestureToView(view: UIView) {
+        let edgeGesture: UIScreenEdgePanGestureRecognizer = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(gestureRecognizerDidEdge(sender:)))
+        edgeGesture.delegate = self
+        edgeGesture.edges = UIRectEdge.left
+        view.addGestureRecognizer(edgeGesture)
 
-        self.gestures.add(panGesture)
+        gestures.add(edgeGesture)
     }
 
-    @objc func gestureRecognizerDidPan(panGesture : UIPanGestureRecognizer) -> Void {
-        if self.animationing {
+    @objc func gestureRecognizerDidEdge(sender: UIScreenEdgePanGestureRecognizer) {
+        if breakEdgeGesture || animationing {
             return
         }
 
-        let currentPoint = panGesture.translation(in: self.view)
-        let x = currentPoint.x + self.panOrigin.x
+        let currentPoint = sender.translation(in: view)
+        let x = currentPoint.x + panOrigin.x
 
-        var panDirection = PanDirection.None
-        let vel = panGesture.velocity(in: self.view)
+        var edgeDirection = EdgeDirection.None
+        let vel = sender.velocity(in: view)
 
         if vel.x > 0 {
-            panDirection = PanDirection.Right
+            edgeDirection = EdgeDirection.Right
         } else {
-            panDirection = PanDirection.Left
+            edgeDirection = EdgeDirection.Left
         }
 
-        var offset : CGFloat = 0
+        var offset: CGFloat = 0
 
-        let currentVC = self.currentViewController
+        let currentVC = currentViewController
         offset = currentVC.view.frame.width - x
         currentVC.view.layer.shadowColor = UIColor.black.cgColor
         currentVC.view.layer.shadowOpacity = ShadowOpacity
         currentVC.view.layer.shadowRadius = ShadowRadius
 
-        self.percentageOffsetFromLeft = offset / self.viewBoundsWithOrientation(orientation: self.interfaceOrientation).width
-        currentVC.view.frame = self.getSlidingRectWithPercentageOffset(percentage: self.percentageOffsetFromLeft, orientation: self.interfaceOrientation)
-        self.transformAtPercentage(percentage: self.percentageOffsetFromLeft)
+        percentageOffsetFromLeft = offset / viewBoundsWithOrientation(orientation: interfaceOrientation).width
+        currentVC.view.frame = getSlidingRectWithPercentageOffset(percentage: percentageOffsetFromLeft, orientation: interfaceOrientation)
+        transformAtPercentage(percentage: percentageOffsetFromLeft)
 
-        if panGesture.state == UIGestureRecognizerState.cancelled || panGesture.state == UIGestureRecognizerState.ended {
-            if fabs(vel.x) > 100 {
-                self.completeSlidingAnimationWithDirection(direction: panDirection)
+        if sender.state == UIGestureRecognizer.State.cancelled || sender.state == UIGestureRecognizer.State.ended {
+            if abs(vel.x) > 100 {
+                completeSlidingAnimationWithDirection(direction: edgeDirection)
             } else {
-                self.completeSlidingAnimationWithOffset(offset: offset)
+                completeSlidingAnimationWithOffset(offset: offset)
             }
         }
     }
 
-    func getSlidingRectWithPercentageOffset(percentage : CGFloat, orientation : UIInterfaceOrientation) -> CGRect {
-        let viewRect = self.viewBoundsWithOrientation(orientation: orientation)
-        var rectToReturn : CGRect = CGRect.init()
+    func getSlidingRectWithPercentageOffset(percentage: CGFloat, orientation: UIInterfaceOrientation) -> CGRect {
+        let viewRect = viewBoundsWithOrientation(orientation: orientation)
+        var rectToReturn: CGRect = CGRect()
         rectToReturn.size = viewRect.size
-        rectToReturn.origin = CGPoint.init(x: max(0, (1 - percentage) * viewRect.width), y: 0)
+        rectToReturn.origin = CGPoint(x: max(0, (1 - percentage) * viewRect.width), y: 0)
 
         return rectToReturn
     }
 
-    func transformAtPercentage(percentage : CGFloat) -> Void {
-        let transf : CGAffineTransform = CGAffineTransform.identity
+    func transformAtPercentage(percentage: CGFloat) {
+        let transf: CGAffineTransform = CGAffineTransform.identity
         let newTransformValue = 1 - percentage * (1 - ZoomRatio)
         let newAlphaValue = percentage * MaxBlackMaskAlpha
-        self.previousViewController.view.transform = transf.scaledBy(x: newTransformValue, y: newTransformValue)
-        self.blackMask?.alpha = newAlphaValue
+        previousViewController.view.transform = transf.scaledBy(x: newTransformValue, y: newTransformValue)
+        blackMask?.alpha = newAlphaValue
     }
 
-    func completeSlidingAnimationWithDirection(direction : PanDirection) -> Void {
-        if direction == PanDirection.Right {
-            self.popViewController()
+    func completeSlidingAnimationWithDirection(direction: EdgeDirection) {
+        if direction == EdgeDirection.Right {
+            popViewController()
         } else {
-            self.rollBackViewController()
+            rollBackViewController()
         }
     }
 
-    func completeSlidingAnimationWithOffset(offset : CGFloat) -> Void {
-        if offset < self.viewBoundsWithOrientation(orientation: self.interfaceOrientation).width * 0.5 {
-            self.popViewController()
+    func completeSlidingAnimationWithOffset(offset: CGFloat) {
+        if offset < viewBoundsWithOrientation(orientation: interfaceOrientation).width * 0.5 {
+            popViewController()
         } else {
-            self.rollBackViewController()
+            rollBackViewController()
         }
     }
 
-    func rollBackViewController() -> Void {
-        if self.animationing {
+    func rollBackViewController() {
+        if animationing {
             return
         }
 
-        let currentVC = self.currentViewController
-        let previousVC = self.previousViewController
-        let rect = CGRect.init(x: 0, y: 0, width: currentVC.view.frame.width, height: currentVC.view.frame.height)
+        let currentVC = currentViewController
+        let previousVC = previousViewController
+        let rect = CGRect(x: 0, y: 0, width: currentVC.view.frame.width, height: currentVC.view.frame.height)
 
-        UIView.animate(withDuration: 0.3, delay: 0, options: UIViewAnimationOptions.curveEaseInOut, animations: {
-            let transf : CGAffineTransform = CGAffineTransform.identity
+        UIView.animate(withDuration: 0.3, delay: 0, options: UIView.AnimationOptions.curveEaseInOut, animations: {
+            let transf: CGAffineTransform = CGAffineTransform.identity
             previousVC.view.transform = transf.scaledBy(x: self.ZoomRatio, y: self.ZoomRatio)
             currentVC.view.frame = rect
             self.blackMask?.alpha = self.MaxBlackMaskAlpha
-        }) { (finished) in
+        }) { finished in
             if finished {
                 self.animationing = false
             }
         }
-
     }
 
-    public func pushViewController(viewController : UIViewController) -> Void {
-        self.pushViewController(viewController: viewController, completion: nil)
+    public func pushViewController(viewController: UIViewController) {
+        pushViewController(viewController: viewController, completion: nil)
     }
 
-    public func pushViewController(viewController : UIViewController, completion : (() -> Swift.Void)?) -> Void {
-        self.animationing = true
+    public func pushViewController(viewController: UIViewController, completion: (() -> Swift.Void)?) {
+        animationing = true
 
         viewController.view.layer.shadowColor = UIColor.black.cgColor
         viewController.view.layer.shadowOpacity = ShadowOpacity
         viewController.view.layer.shadowRadius = ShadowRadius
 
-        viewController.view.frame = self.view.bounds.offsetBy(dx: self.view.bounds.width, dy: 0)
-        viewController.view.autoresizingMask = UIViewAutoresizing(rawValue: UIViewAutoresizing.RawValue(UInt8(UIViewAutoresizing.flexibleHeight.rawValue) | UInt8(UIViewAutoresizing.flexibleWidth.rawValue)))
-        self.blackMask?.alpha = 0
-        viewController.willMove(toParentViewController: self)
-        self.addChildViewController(viewController)
+        viewController.view.frame = view.bounds.offsetBy(dx: view.bounds.width, dy: 0)
+        viewController.view.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
+        blackMask?.alpha = 0
+        viewController.willMove(toParent: self)
+        addChild(viewController)
 
-        self.view.bringSubview(toFront: self.blackMask!)
-        self.view.addSubview(viewController.view)
+        view.bringSubviewToFront(blackMask!)
+        view.addSubview(viewController.view)
 
-        UIView.animate(withDuration: AnimationDuration, delay: 0, options: UIViewAnimationOptions.curveEaseInOut, animations: {
-            let transf : CGAffineTransform = CGAffineTransform.identity
+        UIView.animate(withDuration: AnimationDuration, delay: 0, options: UIView.AnimationOptions.curveEaseInOut, animations: {
+            let transf: CGAffineTransform = CGAffineTransform.identity
             self.currentViewController.view.transform = transf.scaledBy(x: self.ZoomRatio, y: self.ZoomRatio)
             viewController.view.frame = self.view.bounds
             self.blackMask?.alpha = self.MaxBlackMaskAlpha
-        }) { (finished) in
+        }) { finished in
             if finished {
                 self.viewControllers.add(viewController)
-                viewController.didMove(toParentViewController: self)
+                viewController.didMove(toParent: self)
 
                 self.animationing = false
-                self.gestures = NSMutableArray.init()
-                self.addPanGestureToView(view: self.currentViewController.view)
+                self.gestures = NSMutableArray()
+                self.addEdgeGestureToView(view: self.currentViewController.view)
 
                 if completion != nil {
                     completion!()
@@ -252,39 +272,39 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
 
-    public func popViewController() -> Void {
-        self.popViewControllerCompletion(completion: nil)
+    public func popViewController() {
+        popViewControllerCompletion(completion: nil)
     }
 
-    public func popViewControllerCompletion(completion : (() -> Swift.Void)?) {
-        if self.viewControllers.count < 2 {
+    public func popViewControllerCompletion(completion: (() -> Swift.Void)?) {
+        if viewControllers.count < 2 {
             return
         }
 
-        self.animationing = true
+        animationing = true
 
-        let currentVC = self.currentViewController
-        let previousVC = self.previousViewController
+        let currentVC = currentViewController
+        let previousVC = previousViewController
         previousVC.viewWillAppear(false)
 
         currentVC.view.layer.shadowColor = UIColor.black.cgColor
         currentVC.view.layer.shadowOpacity = ShadowOpacity
         currentVC.view.layer.shadowRadius = ShadowRadius
 
-        UIView.animate(withDuration: AnimationDuration, delay: 0, options: UIViewAnimationOptions.curveEaseInOut, animations: {
+        UIView.animate(withDuration: AnimationDuration, delay: 0, options: UIView.AnimationOptions.curveEaseInOut, animations: {
             currentVC.view.frame = self.view.bounds.offsetBy(dx: self.view.bounds.width, dy: 0)
-            let transf : CGAffineTransform = CGAffineTransform.identity
+            let transf: CGAffineTransform = CGAffineTransform.identity
             previousVC.view.transform = transf.scaledBy(x: 1.0, y: 1.0)
             previousVC.view.frame = self.view.bounds
             self.blackMask?.alpha = 0
-        }) { (finished) in
+        }) { finished in
             if finished {
                 currentVC.view.removeFromSuperview()
-                currentVC.willMove(toParentViewController: nil)
+                currentVC.willMove(toParent: nil)
 
-                self.view.bringSubview(toFront: self.previousViewController.view)
-                currentVC.removeFromParentViewController()
-                currentVC.didMove(toParentViewController: nil)
+                self.view.bringSubviewToFront(self.previousViewController.view)
+                currentVC.removeFromParent()
+                currentVC.didMove(toParent: nil)
 
                 self.viewControllers.remove(currentVC)
                 self.animationing = false
@@ -297,47 +317,45 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
 
-    public func popToViewController(toViewController : UIViewController) -> Void {
-        let controllers : NSMutableArray = self.viewControllers.mutableCopy() as! NSMutableArray
+    public func popToViewController(toViewController: UIViewController) {
+        let controllers: NSMutableArray = viewControllers.mutableCopy() as! NSMutableArray
         let index = controllers.index(of: toViewController)
-        var needRemoveViewController : UIViewController? = nil
+        var needRemoveViewController: UIViewController?
 
         for i in index + 1 ... controllers.count - 2 {
             needRemoveViewController = controllers.object(at: i) as? UIViewController
             needRemoveViewController?.view.alpha = 0
-            needRemoveViewController?.removeFromParentViewController()
+            needRemoveViewController?.removeFromParent()
             controllers.remove(needRemoveViewController as Any)
         }
 
-        self.popViewController()
+        popViewController()
     }
 
-    public func popToRootViewController() -> Void {
-        let rootViewController : UIViewController = self.viewControllers.object(at: 0) as! UIViewController
-        self.popToViewController(toViewController: rootViewController)
+    public func popToRootViewController() {
+        let rootViewController: UIViewController = viewControllers.object(at: 0) as! UIViewController
+        popToViewController(toViewController: rootViewController)
     }
 }
 
 /// Helper UIViewController extension.
 extension UIViewController {
-    var jccNavigationController : JCCNavigationController {
-        get {
-            var result : JCCNavigationController? = nil
-            var view : UIView = self.view
+    var jccNavigationController: JCCNavigationController {
+        var result: JCCNavigationController?
+        var view: UIView = self.view
 
-            var responder : UIResponder? = view.next
+        var responder: UIResponder? = view.next
 
-            while responder != nil {
-                if (responder?.isKind(of: JCCNavigationController.self))! {
-                    result = responder as? JCCNavigationController
-                    return result!
-                }
-
-                view = view.superview!
-                responder = view.next
+        while responder != nil {
+            if (responder?.isKind(of: JCCNavigationController.self))! {
+                result = responder as? JCCNavigationController
+                return result!
             }
 
-            return result!
+            view = view.superview!
+            responder = view.next
         }
+
+        return result!
     }
 }
