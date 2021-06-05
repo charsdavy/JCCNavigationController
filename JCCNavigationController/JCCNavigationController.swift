@@ -59,14 +59,14 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         let viewRect = viewBoundsWithOrientation(orientation: interfaceOrientation)
 
         let rootViewController = viewControllers.firstObject as! UIViewController
-        rootViewController.willMove(toParent: self)
-        addChild(rootViewController)
+        rootViewController.willMove(toParentViewController: self)
+        addChildViewController(rootViewController)
 
         let rootView = rootViewController.view as UIView
         rootView.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
         rootView.frame = viewRect
         view.addSubview(rootView)
-        rootViewController.didMove(toParent: self)
+        rootViewController.didMove(toParentViewController: self)
 
         let blackMask = UIView(frame: viewRect)
         blackMask.backgroundColor = UIColor.black
@@ -245,10 +245,10 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         viewController.view.frame = view.bounds.offsetBy(dx: view.bounds.width, dy: 0)
         viewController.view.autoresizingMask = UIView.AutoresizingMask(rawValue: UIView.AutoresizingMask.RawValue(UInt8(UIView.AutoresizingMask.flexibleHeight.rawValue) | UInt8(UIView.AutoresizingMask.flexibleWidth.rawValue)))
         blackMask?.alpha = 0
-        viewController.willMove(toParent: self)
-        addChild(viewController)
+        viewController.willMove(toParentViewController: self)
+        addChildViewController(viewController)
 
-        view.bringSubviewToFront(blackMask!)
+        view.bringSubview(toFront: blackMask!)
         view.addSubview(viewController.view)
 
         UIView.animate(withDuration: AnimationDuration, delay: 0, options: UIView.AnimationOptions.curveEaseInOut, animations: {
@@ -259,7 +259,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }) { finished in
             if finished {
                 self.viewControllers.add(viewController)
-                viewController.didMove(toParent: self)
+                viewController.didMove(toParentViewController: self)
 
                 self.animationing = false
                 self.gestures = NSMutableArray()
@@ -300,11 +300,11 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }) { finished in
             if finished {
                 currentVC.view.removeFromSuperview()
-                currentVC.willMove(toParent: nil)
+                currentVC.willMove(toParentViewController: nil)
 
-                self.view.bringSubviewToFront(self.previousViewController.view)
-                currentVC.removeFromParent()
-                currentVC.didMove(toParent: nil)
+                self.view.bringSubview(toFront: self.previousViewController.view)
+                currentVC.removeFromParentViewController()
+                currentVC.didMove(toParentViewController: nil)
 
                 self.viewControllers.remove(currentVC)
                 self.animationing = false
@@ -325,7 +325,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         for i in index + 1 ... controllers.count - 2 {
             needRemoveViewController = controllers.object(at: i) as? UIViewController
             needRemoveViewController?.view.alpha = 0
-            needRemoveViewController?.removeFromParent()
+            needRemoveViewController?.removeFromParentViewController()
             controllers.remove(needRemoveViewController as Any)
         }
 
