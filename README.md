@@ -33,7 +33,7 @@ use_frameworks!
 target 'MyApp' do
   # your other pod
   # ...
-  pod 'JCCNavigationController', '~> 1.0'
+  pod 'JCCNavigationController'
 end
 ```
 
