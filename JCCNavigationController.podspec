@@ -57,7 +57,7 @@ Pod::Spec.new do |s|
   s.author             = { "charsdavy" => "charsdavy@gamil.com" }
   s.social_media_url   = "https://twitter.com/charsdavy"
 
-  s.swift_version = "4.0"
+  s.swift_version = "5.0"
   # ――― Platform Specifics ――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
   #
   #  If this Pod runs only on iOS or OS X, then specify the platform and
@@ -65,10 +65,10 @@ Pod::Spec.new do |s|
   #
 
   s.platform     = :ios
-  s.platform     = :ios, "8.0"
+  s.platform     = :ios, "11.0"
 
   #  When using multiple platforms
-  s.ios.deployment_target = "8.0"
+  s.ios.deployment_target = "11.0"
   # s.osx.deployment_target = "10.7"
   # s.watchos.deployment_target = "2.0"
   # s.tvos.deployment_target = "9.0"
