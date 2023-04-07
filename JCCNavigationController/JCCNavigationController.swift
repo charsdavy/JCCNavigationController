@@ -56,7 +56,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
     override func loadView() {
         super.loadView()
 
-        let viewRect = viewBoundsWithOrientation(orientation: interfaceOrientation)
+        let viewRect = viewBoundsWithOrientation(orientation: UIDevice.current.orientation)
 
         let rootViewController = viewControllers.firstObject as! UIViewController
         rootViewController.willMove(toParent: self)
@@ -95,7 +95,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         breakEdgeGesture = status
     }
 
-    func viewBoundsWithOrientation(orientation: UIInterfaceOrientation) -> CGRect {
+    func viewBoundsWithOrientation(orientation: UIDeviceOrientation) -> CGRect {
         var bounds: CGRect = UIScreen.main.bounds
 
         if UIApplication.shared.isStatusBarHidden {
@@ -164,8 +164,8 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         currentVC.view.layer.shadowOpacity = ShadowOpacity
         currentVC.view.layer.shadowRadius = ShadowRadius
 
-        percentageOffsetFromLeft = offset / viewBoundsWithOrientation(orientation: interfaceOrientation).width
-        currentVC.view.frame = getSlidingRectWithPercentageOffset(percentage: percentageOffsetFromLeft, orientation: interfaceOrientation)
+        percentageOffsetFromLeft = offset / viewBoundsWithOrientation(orientation: UIDevice.current.orientation).width
+        currentVC.view.frame = getSlidingRectWithPercentageOffset(percentage: percentageOffsetFromLeft, orientation: UIDevice.current.orientation)
         transformAtPercentage(percentage: percentageOffsetFromLeft)
 
         if sender.state == UIGestureRecognizer.State.cancelled || sender.state == UIGestureRecognizer.State.ended {
@@ -177,7 +177,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
         }
     }
 
-    func getSlidingRectWithPercentageOffset(percentage: CGFloat, orientation: UIInterfaceOrientation) -> CGRect {
+    func getSlidingRectWithPercentageOffset(percentage: CGFloat, orientation: UIDeviceOrientation) -> CGRect {
         let viewRect = viewBoundsWithOrientation(orientation: orientation)
         var rectToReturn: CGRect = CGRect()
         rectToReturn.size = viewRect.size
@@ -203,7 +203,7 @@ class JCCNavigationController: UIViewController, UIGestureRecognizerDelegate {
     }
 
     func completeSlidingAnimationWithOffset(offset: CGFloat) {
-        if offset < viewBoundsWithOrientation(orientation: interfaceOrientation).width * 0.5 {
+        if offset < viewBoundsWithOrientation(orientation: UIDevice.current.orientation).width * 0.5 {
             popViewController()
         } else {
             rollBackViewController()
